@@ -19,6 +19,7 @@ in
         ../../packages/llama-cpp-python
         ../../packages/rwkv
         ../../packages/autogptq
+        ../../packages/torch-grammar
         ../../packages/rouge
       ])
     ];

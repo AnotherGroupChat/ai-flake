@@ -8,7 +8,7 @@
 
   inputs = {
     nixpkgs = {
-      url = "github:NixOS/nixpkgs/nixos-unstable";
+      url = github:nixos/nixpkgs/e35dcc04a3853da485a396bdd332217d0ac9054f;
     };
     invokeai-src = {
       url = "github:invoke-ai/InvokeAI/v2.3.1.post2";
@@ -26,9 +26,16 @@
       url = "github:hercules-ci/flake-parts";
       inputs.nixpkgs-lib.follows = "nixpkgs";
     };
+    hercules-ci-agent = {
+      url = "github:hercules-ci/hercules-ci-agent";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.flake-parts.follows = "flake-parts";
+    };
     hercules-ci-effects = {
       url = "github:hercules-ci/hercules-ci-effects";
       inputs.nixpkgs.follows = "nixpkgs";
+      inputs.hercules-ci-agent.follows = "hercules-ci-agent";
+      inputs.flake-parts.follows = "flake-parts";
     };
   };
   outputs = { flake-parts, invokeai-src, hercules-ci-effects, ... }@inputs:

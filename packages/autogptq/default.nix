@@ -14,6 +14,7 @@
 , ninja
 , cudaArchList ? [ "8.6+PTX" ]
 , gcc11Stdenv
+, pybind11
 }:
 let
   cuda-native-redist = symlinkJoin {
@@ -65,6 +66,7 @@ buildPythonPackage rec {
     transformers
     datasets
     torch
+    pybind11
   ];
 
   meta = with lib; {

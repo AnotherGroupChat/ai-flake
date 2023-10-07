@@ -9,46 +9,51 @@
 , stateDir ? "$HOME/.textgen/state"
 , libdrm
 , cudaPackages
+, gcc
 }:
 let
+
   patchedSrc = runCommand "textgen-patchedSrc" { } ''
     cp -r --no-preserve=mode ${src} ./src
     cd src
     rm -rf models loras cache
     mv ./prompts ./_prompts
     mv ./characters ./_characters
+    mv ./training ./_training
     cd -
-    substituteInPlace ./src/server.py \
-      --replace "Path('presets" "Path('$out/presets" \
-      --replace "Path('prompts" "Path('$out/prompts" \
-      --replace "Path(f'prompts" "Path(f'$out/prompts" \
-      --replace "Path('extensions" "Path('$out/extensions" \
-      --replace "Path(f'presets" "Path(f'$out/presets" \
-      --replace "Path('softprompts" "Path('$out/softprompts" \
-      --replace "Path(f'softprompts" "Path(f'$out/softprompts" \
-      --replace "Path('characters" "Path('$out/characters" \
-      --replace "Path('cache" "Path('$out/cache"
-    substituteInPlace ./src/download-model.py \
-      --replace "=args.output" "='$out/models/'" \
-      --replace "base_folder=None" "base_folder='$out/models/'"
-    substituteInPlace ./src/modules/html_generator.py \
-      --replace "../css" "$out/css" \
-      --replace 'Path(__file__).resolve().parent / ' "" \
-      --replace "Path(f'css" "Path(f'$out/css"
-    substituteInPlace ./src/modules/utils.py \
-      --replace "Path('css" "Path('$out/css" \
-      --replace "Path('characters" "Path('$out/characters" \
-      --replace "characters/" "$out/characters/"
-    substituteInPlace ./src/modules/chat.py \
-      --replace "folder = 'characters'" "folder = '$out/characters'" \
-      --replace "Path('characters" "Path('$out/characters" \
-      --replace "characters/" "$out/characters/"
+    for file in $(find src/ -type f -name "*.py"); do
+      substituteInPlace $file \
+        --replace "Path('cache" "Path('$out/cache" \
+        --replace "Path('characters" "Path('$out/characters" \
+        --replace "Path('extensions" "Path('$out/extensions" \
+        --replace "Path('presets" "Path('$out/presets" \
+        --replace "Path('prompts" "Path('$out/prompts" \
+        --replace "Path('softprompts" "Path('$out/softprompts" \
+        --replace "Path('training" "Path('$out/training" \
+        --replace "Path(f'presets" "Path(f'$out/presets" \
+        --replace "Path(f'prompts" "Path(f'$out/prompts" \
+        --replace "Path(f'softprompts" "Path(f'$out/softprompts" \
+        --replace "training/datasets" "$out/training/datasets" \
+        --replace "=args.output" "='$out/models/'" \
+        --replace "base_folder=None" "base_folder='$out/models/'" \
+        --replace "../css" "$out/css" \
+        --replace "../js" "$out/js" \
+        --replace 'Path(__file__).resolve().parent / ' "" \
+        --replace "Path(f'css" "Path(f'$out/css" \
+        --replace "Path('css" "Path('$out/css" \
+        --replace "Path('characters" "Path('$out/characters" \
+        --replace "characters/" "$out/characters/" \
+        --replace "folder = 'characters'" "folder = '$out/characters'" \
+        --replace "Path('characters" "Path('$out/characters" \
+        --replace "characters/" "$out/characters/"
+    done
     mv ./src $out
-    ln -s ${tmpDir}/models/ $out/models
-    ln -s ${tmpDir}/loras/ $out/loras
     ln -s ${tmpDir}/cache/ $out/cache
-    ln -s ${tmpDir}/prompts/ $out/prompts
     ln -s ${tmpDir}/characters/ $out/characters
+    ln -s ${tmpDir}/loras/ $out/loras
+    ln -s ${tmpDir}/models/ $out/models
+    ln -s ${tmpDir}/prompts/ $out/prompts
+    ln -s ${tmpDir}/training/ $out/training
   '';
   textgenPython = python3Packages.python.withPackages (_: with python3Packages; [
     accelerate
@@ -78,6 +83,7 @@ let
     sentencepiece
     tqdm
     transformers
+    torch-grammar
     autogptq
     torch
   ]);
@@ -112,6 +118,7 @@ in
   ln -s ${stateDir}/prompts/ ${tmpDir}/prompts
   ln -s ${stateDir}/characters/ ${tmpDir}/characters
   ${lib.optionalString (python3Packages.torch.rocmSupport or false) rocmInit}
+  export CC=${gcc}/bin/gcc
   export LD_LIBRARY_PATH=/run/opengl-driver/lib:${cudaPackages.cudatoolkit}/lib
   ${textgenPython}/bin/python ${patchedSrc}/server.py $@ \
     --model-dir ${stateDir}/models/ \
